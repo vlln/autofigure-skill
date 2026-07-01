@@ -1,26 +1,17 @@
 ---
 name: autofigure
-description: Generate publication-ready scientific SVG figures for flowcharts, architecture diagrams, conceptual schematics, and methodology overviews. This skill is for non-data figures only — no bar/line/scatter charts, no heatmaps, no ROC curves, no plots derived from numerical data. Use when the user asks to create a figure, diagram, or illustration for a paper, survey, blog post, or textbook.
+description: Use this skill when creating publication-ready scientific SVG figures for flowcharts, architecture diagrams, conceptual schematics, and methodology overviews. This skill is for non-data figures only — no bar/line/scatter charts, no heatmaps, no ROC curves, no plots derived from numerical data. Use when the user asks to create a figure, diagram, or illustration for a paper, survey, blog post, or textbook.
 license: MIT
-compatibility: "Requires cairosvg (pip install cairosvg). Optional: VLM API key for visual evaluation."
+requires:
+  bins:
+    - cairosvg
+  platforms:
+    os:
+      - linux
+      - darwin
 metadata:
-  skit:
-    version: 0.1.0
-    requires:
-      bins:
-        - cairosvg
-      platforms:
-        os:
-          - linux
-          - darwin
-    keywords:
-      - figure
-      - diagram
-      - visualization
-      - svg
-      - paper
-      - scientific
-      - illustration
+  author: vlln
+  version: "0.1.0"
 ---
 
 # AutoFigure
@@ -28,7 +19,13 @@ metadata:
 Generate publication-ready scientific SVG figures for **non-data** content
 (flowcharts, architecture diagrams, conceptual schematics, methodology overviews)
 through iterative refinement (Generate → Evaluate → Improve). Agent drives the loop;
-dedicated prompts for evaluation live in `references/prompts/`.
+evaluation prompts live in `references/prompts/`.
+
+## Trigger Keywords
+
+figure, diagram, illustration, schematic, flowchart, architecture diagram,
+methodology overview, conceptual diagram, paper figure, publication figure,
+journal figure, scientific figure, SVG figure, workflow diagram
 
 ## Publication-Figure Standard
 
@@ -74,18 +71,6 @@ connections, flows, and hierarchies. Correct use cases:
 Rule of thumb: if a figure's value depends on the **numerical accuracy** of rendered
 data points, this skill cannot produce it — a generative model cannot guarantee
 faithful data rendering.
-
-## Scripts
-
-| Script | Purpose |
-|---|---|
-| `check_svg.py <svg> --json` | Structural TDD — catches absolute errors |
-| `evaluate.py <png> --svg <svg>` | VLM visual evaluation (reads `references/prompts/evaluate.md`) |
-
-> `enhance.py` and `references/prompts/enhance.md` are **deprecated**.
-> AI image enhancement of flowcharts typically degrades text legibility and
-> connector accuracy. They remain available for experimental use but are
-> no longer part of the standard workflow.
 
 ## Configuration
 
@@ -181,7 +166,7 @@ Generate SVG, then automatically validate and render:
    - **Comment each section** — add a brief `<!-- purpose -->` comment above
      each `<g>` group.
 
-3. **Structural check** — `python scripts/check_svg.py {svg_path} --json`.
+3. **Structural check** — Run the structural validity check on the SVG.
    If errors, fix the SVG (max 3 attempts) before proceeding.
 
 4. **Render** — `cairosvg {svg} -o {png} -W 1333 -H 750`.
@@ -211,9 +196,8 @@ PNG and `references/prompts/evaluate.md`. The subAgent sees the figure fresh
 and returns JSON.
 
 **Fallback (requires `AUTOFIGURE_EVAL_API_KEY`):**
-```bash
-python scripts/evaluate.py {png} --svg {svg} --references references/paper/ --json
-```
+Run the VLM visual evaluation on the rendered PNG, providing the SVG and paper
+references for context.
 
 Parse the JSON output. Key fields:
 - `readability_pass` — if false, one or more Layer 0 or Layer 1 issues exist.
@@ -313,6 +297,29 @@ AI image enhancement of flowcharts and relationship diagrams typically
 degrades text legibility and connector accuracy. Image generation models
 are optimized for photographic/illustrative output, not for preserving
 fine-text and precise line work. **Skip this step.**
+
+## Gotchas
+
+- **AI enhancement destroys text**: Image generation models degrade text
+  legibility and connector accuracy on flowcharts. Never use AI enhancement
+  on relationship diagrams.
+- **Generative models cannot render data**: This skill cannot produce bar
+  charts, scatter plots, heatmaps, or any figure whose value depends on
+  numerical accuracy of rendered data points. Reject data-figure requests.
+- **Dashboard layouts are not paper figures**: The default output must look
+  like a journal schematic, not a slide deck. Avoid equal-panel grids, title
+  bars, stacked cards, and long explanatory footers.
+- **Same-agent evaluation is biased**: An isolated subAgent produces more
+  honest critiques than the same agent instance that generated the figure.
+  Always prefer subAgent evaluation when available.
+- **Layer 0 issues require redesign, not patching**: If the central thesis is
+  unclear or the spatial metaphor is wrong, regenerate from scratch. Patching
+  a fundamentally broken design wastes iterations.
+- **Parse markdown code fences from JSON**: When parsing evaluation JSON
+  output, strip markdown code fences before decoding.
+- **Text density is the #1 paper-figure rejection reason**: If the evaluator
+  flags text density, reduce labels aggressively. Most paper figures need
+  far less text than the agent initially assumes.
 
 ## Rules
 
